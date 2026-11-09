@@ -9,10 +9,11 @@ import Quickshell.Hyprland
 
 FloatingWindow {
     id: window
+    onClosed: window.visible = false
     property alias face: face
     title: "Cassette Deck"
-    implicitWidth: 680; implicitHeight: 820
-    minimumSize: Qt.size(640, 750)
+    implicitWidth: 680; implicitHeight: 950
+    minimumSize: Qt.size(640, 880)
     color: "#121413"
     DeckController { id: deck }
     MeterFeed { id: meters; active: deck.playing && window.visible }
@@ -112,12 +113,57 @@ FloatingWindow {
         }
         Label { text: "STEREO TAPE DECK  /  ARCH LINUX"; color: "#7a8177"; font.pixelSize: 10; font.letterSpacing: 2 }
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#44473f" }
-        Cassette { Layout.alignment: Qt.AlignHCenter; playing: deck.playing; progress: deck.duration ? deck.position / deck.duration : 0 }
         RowLayout {
             Layout.fillWidth: true
+            spacing: 12
             VuMeter { Layout.fillWidth: true; channel: "L"; level: meters.left }
+            ColumnLayout {
+                spacing: 9
+                Repeater {
+                    model: 3
+                    delegate: Item {
+                        required property int index
+                        implicitWidth: 34
+                        implicitHeight: index === 1 ? 16 : 30
+                        Rectangle {
+                            anchors.centerIn: parent
+                            visible: parent.index !== 1
+                            width: 29; height: 29; radius: 15
+                            color: "#15191c"; border.color: "#373e43"; border.width: 2
+                            Rectangle {
+                                id: peakLamp
+                                anchors.centerIn: parent
+                                width: 19; height: 19; radius: 10
+                                readonly property bool peak: (parent.parent.index === 0 ? meters.left : meters.right) > 0.9
+                                gradient: Gradient {
+                                    GradientStop { position: 0; color: peakLamp.peak ? "#ffa463" : "#777b79" }
+                                    GradientStop { position: 1; color: peakLamp.peak ? "#b62e17" : "#303637" }
+                                }
+                            }
+                        }
+                        Label {
+                            anchors.centerIn: parent
+                            visible: parent.index === 1
+                            text: "PEAK"; color: "#737b7e"; font.bold: true; font.pixelSize: 10
+                        }
+                    }
+                }
+            }
             VuMeter { Layout.fillWidth: true; channel: "R"; level: meters.right }
         }
+        RowLayout {
+            Layout.fillWidth: true
+            Label {
+                Layout.fillWidth: true
+                text: "COMPACT CASSETTE PLAYER"; color: "#969fa6"
+                font.italic: true; font.bold: true; font.pixelSize: 16
+            }
+            Rectangle {
+                implicitWidth: 110; implicitHeight: 26; color: "#ff7900"
+                Label { anchors.centerIn: parent; text: "STEREO"; color: "#fff3da"; font.italic: true; font.bold: true; font.pixelSize: 18 }
+            }
+        }
+        Cassette { Layout.alignment: Qt.AlignHCenter; playing: deck.playing; progress: deck.duration ? deck.position / deck.duration : 0 }
         Label { text: meters.status; color: "#868e80"; font.pixelSize: 10 }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 68; radius: 5; color: "#1e2822"; border.color: "#455448"

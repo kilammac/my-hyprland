@@ -1,38 +1,55 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-Rectangle {
+
+Item {
     id: root
     property bool playing: false
     property real progress: 0
-    width: 560; height: 268; radius: 16
-    gradient: Gradient {
-        GradientStop { position: 0; color: "#41403c" }
-        GradientStop { position: 0.45; color: "#242523" }
-        GradientStop { position: 1; color: "#151615" }
+    width: 560
+    height: width * 780 / 1185
+    clip: true
+
+    // Keep the supplied photograph intact; show only its cassette section.
+    Image {
+        width: root.width
+        height: width * 1280 / 1185
+        y: -500 * root.width / 1185
+        source: "assets/c60-reference.jpeg"
+        smooth: true
     }
-    border.color: "#77736a"; border.width: 2
-    Repeater {
-        model: 4
+
+    Reel {
+        x: root.width * 298 / 1185
+        y: root.width * 288 / 1185
+        width: root.width * 114 / 1185
+        spinning: root.playing
+        tape: 1 - root.progress
+    }
+    Reel {
+        x: root.width * 775 / 1185
+        y: root.width * 288 / 1185
+        width: root.width * 114 / 1185
+        spinning: root.playing
+        tape: root.progress
+    }
+    Rectangle {
+        x: root.width * 478 / 1185
+        y: root.width * 330 / 1185
+        width: root.width * 227 / 1185
+        height: root.width * 30 / 1185
+        color: "#494940"
+        clip: true
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#34372f" }
+            GradientStop { position: 0.5; color: "#7b7964" }
+            GradientStop { position: 1; color: "#42453c" }
+        }
         Rectangle {
-            required property int index
-            x: index % 2 ? root.width - 24 : 12
-            y: index < 2 ? 12 : root.height - 24
-            width: 12; height: 12; radius: 6; color: "#8a8780"
-            Rectangle { anchors.centerIn: parent; width: 8; height: 2; rotation: 25; color: "#222" }
+            x: (parent.width - width) * Math.max(0, Math.min(1, root.progress))
+            width: parent.width * 0.28
+            height: parent.height
+            color: "#ce993f"
+            opacity: 0.85
         }
     }
-    Rectangle {
-        x: 35; y: 25; width: parent.width - 70; height: 48; radius: 4; color: "#b9b09a"
-        Text { anchors.centerIn: parent; text: "ARCH • CHROME   /   HIGH BIAS Ⅱ"; color: "#25251e"; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 5; color: "#b2603e" }
-    }
-    Rectangle { x: 45; y: 87; width: parent.width - 90; height: 149; radius: 65; color: "#101312"; border.color: "#67685d" }
-    Reel { x: 60; y: 91; spinning: root.playing; tape: 1 - root.progress }
-    Reel { x: parent.width - width - 60; y: 91; spinning: root.playing; tape: root.progress }
-    Rectangle {
-        anchors.centerIn: parent; anchors.verticalCenterOffset: 23
-        width: 112; height: 49; radius: 5; color: "#292c25"; border.color: "#737565"
-        Text { anchors.centerIn: parent; text: "A   ▰▰▰   90"; color: "#a7ac8b"; font.family: "monospace" }
-    }
-    Text { anchors.bottom: parent.bottom; anchors.bottomMargin: 9; anchors.horizontalCenter: parent.horizontalCenter; text: "STEREO CASSETTE  •  DOLBY SYSTEM"; color: "#99988b"; font.pixelSize: 10; font.letterSpacing: 2 }
 }
