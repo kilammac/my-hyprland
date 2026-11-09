@@ -50,7 +50,6 @@ local programmes_demarrage = {
 
 	-- Interface Noctalia : barre, panneaux et widgets.
 	-- "noctalia",
-	"qs",
 	-- "sh -c 'sleep 5; exec noctalia'",
 	-- Décommenter si tu souhaites utiliser hypridle.
 	-- "hypridle",
@@ -59,7 +58,9 @@ local programmes_demarrage = {
 hl.on("hyprland.start", function()
 	-- Rend les variables importantes accessibles à l'activation
 	-- D-Bus et aux services utilisateur systemd.
-	hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE")
+	-- Démarre Quickshell seulement après la transmission de l'environnement.
+	-- Le service systemd le relancera en cas de crash.
+	hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE QT_QPA_PLATFORMTHEME QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_DISABLE_WINDOWDECORATION && systemctl --user restart quickshell.service")
 
 	-- Lance les programmes définis ci-dessus.
 	-- hl.exec_cmd est asynchrone : aucun « & » n'est nécessaire.
