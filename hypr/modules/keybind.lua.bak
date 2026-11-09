@@ -1,0 +1,163 @@
+local scrPath = (os.getenv("HOME") or "") .. "/.config/hypr/Scripts"
+local mainMod = "SUPER"
+local TERMINAL = "kitty"
+local EDITOR = "code"
+local EXPLORER = "thunar"
+local BROWSER = scrPath .. "/browser-launcher.sh"
+
+local MOVE_STEP = 30
+
+-- Direction helpers
+local directions = {
+	left = { x = -MOVE_STEP, y = 0 },
+	right = { x = MOVE_STEP, y = 0 },
+	up = { x = 0, y = -MOVE_STEP },
+	down = { x = 0, y = MOVE_STEP },
+}
+
+-- Helpers
+local function move_or_swap(dir)
+	return function()
+		local w = hl.get_active_window()
+
+		if w and w.floating then
+			hl.dispatch(hl.dsp.window.move({
+				x = directions[dir].x,
+				y = directions[dir].y,
+				relative = true,
+			}))
+		else
+			hl.dispatch(hl.dsp.window.move({
+				direction = dir,
+			}))
+		end
+	end
+end
+
+local function resize_window(dir)
+	return function()
+		hl.dispatch(hl.dsp.window.resize({
+			x = directions[dir].x,
+			y = directions[dir].y,
+			relative = true,
+		}))
+	end
+end
+
+-- Application launchers
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(TERMINAL))
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(EXPLORER))
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd(EDITOR))
+hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(BROWSER))
+hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("qs -c noctalia-shell ipc call launcher toggle"))
+hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("noctalia msg panel-toggle  launcher"))
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("qs -c noctalia-shell ipc call lockScreen lock"))
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("qs -c noctalia-shell ipc call settings toggle"))
+hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("qs -c noctalia-shell ipc call plugin:keybind-cheatsheet toggle"))
+hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("qs -c noctalia-shell ipc call plugin:hyprland-keybinds toggle"))
+hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("steam"))
+
+-- Window management
+hl.bind(mainMod .. " + Q", hl.dsp.window.close())
+hl.bind(mainMod .. " + W", hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
+
+-- Workspace navigation (monitor-relative)
+hl.bind(mainMod .. " + tab", hl.dsp.exec_cmd(scrPath .. "/workspace.sh"))
+hl.bind(mainMod .. " + SHIFT + tab", hl.dsp.focus({ workspace = "m-1" }))
+
+-- Focus movement
+hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "up" }))
+hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "down" }))
+
+-- Cycle windows
+hl.bind("ALT + tab", hl.dsp.window.cycle_next())
+
+-- Resize active window (keyboard)
+for dir, _ in pairs(directions) do
+	hl.bind(mainMod .. " + SHIFT + " .. dir, resize_window(dir))
+end
+
+-- Move active window (float) or swap tiled
+for dir, _ in pairs(directions) do
+	hl.bind(mainMod .. " + SHIFT + CTRL + " .. dir, move_or_swap(dir))
+end
+
+-- Screenshots
+hl.bind(mainMod .. " + PRINT", hl.dsp.exec_cmd("HYPRSHOT_DIR=~/Pictures/Screenshots hyprshot -m window"))
+hl.bind("ALT + PRINT", hl.dsp.exec_cmd("HYPRSHOT_DIR=~/Pictures/Screenshots hyprshot -m output"))
+hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("HYPRSHOT_DIR=~/Pictures/Screenshots hyprshot -m region"))
+hl.bind(
+	mainMod .. " + A",
+	hl.dsp.exec_cmd(
+		"grim -g \"$(slurp)\" - | satty --filename - --output-filename ~/Pictures/Screenshots/Screenshot-$(date '+%Y%m%d-%H:%M:%S').png"
+	)
+)
+
+-- Workspace switching and window-to-workspace
+for i = 1, 9 do
+	hl.bind(mainMod .. " + " .. i, hl.dsp.focus({ workspace = i }))
+	hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
+end
+hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
+hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
+
+-- Relative workspace navigation
+hl.bind(mainMod .. " + CTRL + right", hl.dsp.focus({ workspace = "r+1" }))
+hl.bind(mainMod .. " + CTRL + left", hl.dsp.focus({ workspace = "r-1" }))
+hl.bind(mainMod .. " + CTRL + down", hl.dsp.focus({ workspace = "empty" }))
+
+-- Move window to relative workspace
+hl.bind(mainMod .. " + CTRL + ALT + right", hl.dsp.window.move({ workspace = "r+1" }))
+hl.bind(mainMod .. " + CTRL + ALT + left", hl.dsp.window.move({ workspace = "r-1" }))
+
+-- Mouse scroll workspace
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+
+-- Mouse window management
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+hl.bind(mainMod .. " + X", hl.dsp.window.resize())
+
+-- Media keys
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+-- Volume +
+hl.bind(
+	"XF86AudioRaiseVolume",
+	hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"),
+	{ description = "Volume up", repeating = true, locked = true }
+)
+
+-- Volume -
+hl.bind(
+	"XF86AudioLowerVolume",
+	hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%-"),
+	{ description = "Volume down", repeating = true, locked = true }
+)
+
+-- Mute
+hl.bind(
+	"XF86AudioMute",
+	hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),
+	{ description = "Toggle mute", locked = true }
+)
+
+-- Luminosité +
+hl.bind(
+	"XF86MonBrightnessUp",
+	hl.dsp.exec_cmd("brightnessctl set 5%+"),
+	{ description = "Brightness up", repeating = true, locked = true }
+)
+
+-- Luminosité -
+hl.bind(
+	"XF86MonBrightnessDown",
+	hl.dsp.exec_cmd("brightnessctl set 5%-"),
+	{ description = "Brightness down", repeating = true, locked = true }
+)
+return true
