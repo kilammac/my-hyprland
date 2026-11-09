@@ -11,6 +11,7 @@ Scope {
     id: root
 
     property bool loaded: false
+    property var savedState: ({})
     property string method: Prayers.defaultMethod
     property string asr: Prayers.defaultAsr
     property string highLat: Prayers.defaultHighLat
@@ -119,6 +120,7 @@ Scope {
     function adopt(payload: string): void {
         try {
             const data = JSON.parse(payload);
+            root.savedState = data;
 
             root.method = data.method ?? Prayers.defaultMethod;
             root.asr = data.asr ?? Prayers.defaultAsr;
@@ -134,11 +136,11 @@ Scope {
     }
 
     function flush(): void {
-        store.setText(JSON.stringify({
+        store.setText(JSON.stringify(Object.assign({}, root.savedState, {
             method: root.method,
             asr: root.asr,
             highLat: root.highLat
-        }));
+        })));
     }
 
     onPlaceChanged: Geo.requestZone(root.place.tz)

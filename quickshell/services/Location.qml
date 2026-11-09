@@ -69,12 +69,21 @@ Singleton {
         command: ["mkdir", "-p", root.stateDir]
     }
 
+    // Read the previous prayer-owned location only when no shared location exists.
+    FileView {
+        id: legacy
+        path: `${root.stateDir}/${Appearance.prayer.stateFile}`
+        preload: false
+        blockLoading: true
+        printErrors: false
+    }
+
     FileView {
         id: store
         path: root.statePath
         atomicWrites: true
         printErrors: false
         onLoaded: root.adopt(text())
-        onLoadFailed: root.adopt("{}")
+        onLoadFailed: root.adopt(legacy.text())
     }
 }

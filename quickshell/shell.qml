@@ -48,7 +48,7 @@ ShellRoot {
     Osd {}
     Polkit {}
     Power {}
-    PrayerCenter {}
+    PrayerModule {}
     Screenshot {}
     SettingsCenter {}
     Share {}
