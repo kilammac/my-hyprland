@@ -19,30 +19,30 @@
 -- On conserve les applications de ton fichier initial, sans ajouter
 -- arbitrairement de nouvelles applications à la liste.
 local floating_classes = {
-    "org.pulseaudio.pavucontrol",       -- Contrôle du volume PulseAudio/PipeWire
-    "de.haeckerfelix.Shortwave",        -- Radio Internet
-    "com.github.iwalton3.jellyfin-media-player", -- Lecteur Jellyfin
-    "Signal",                           -- Messagerie Signal
-    "com.github.rafostar.Clapper",      -- Lecteur vidéo Clapper
-    "app.drey.Warp",                    -- Transfert de fichiers
-    "net.davidotek.pupgui2",            -- ProtonUp-Qt
-    "yad",                              -- Boîtes de dialogue YAD
-    "eog",                              -- Visionneuse d'images
-    "io.github.alainm23.planify",       -- Gestionnaire de tâches
-    "io.gitlab.theevilskeleton.Upscaler", -- Agrandissement d'images
-    "com.github.unrud.VideoDownloader", -- Téléchargement de vidéos
-    "io.gitlab.adhami3310.Impression",  -- Application Impression
-    "io.missioncenter.MissionCenter",    -- Moniteur système
+	"org.pulseaudio.pavucontrol", -- Contrôle du volume PulseAudio/PipeWire
+	"de.haeckerfelix.Shortwave", -- Radio Internet
+	"com.github.iwalton3.jellyfin-media-player", -- Lecteur Jellyfin
+	"Signal", -- Messagerie Signal
+	"com.github.rafostar.Clapper", -- Lecteur vidéo Clapper
+	"app.drey.Warp", -- Transfert de fichiers
+	"net.davidotek.pupgui2", -- ProtonUp-Qt
+	"yad", -- Boîtes de dialogue YAD
+	"eog", -- Visionneuse d'images
+	"io.github.alainm23.planify", -- Gestionnaire de tâches
+	"io.gitlab.theevilskeleton.Upscaler", -- Agrandissement d'images
+	"com.github.unrud.VideoDownloader", -- Téléchargement de vidéos
+	"io.gitlab.adhami3310.Impression", -- Application Impression
+	"io.missioncenter.MissionCenter", -- Moniteur système
 }
 
 -- Les points dans les identifiants sont des points littéraux dans la regex.
 -- Cela évite de les interpréter comme « n'importe quel caractère ».
 for _, class in ipairs(floating_classes) do
-    local pattern = "^" .. class:gsub("%.", "\\.") .. "$"
-    hl.window_rule({
-        match = { class = pattern },
-        float = true,
-    })
+	local pattern = "^" .. class:gsub("%.", "\\.") .. "$"
+	hl.window_rule({
+		match = { class = pattern },
+		float = true,
+	})
 end
 
 -- 2. EMPÊCHER LA MISE EN VEILLE PENDANT UNE VIDÉO ---------------------------
@@ -50,17 +50,17 @@ end
 -- normalement hypridle de lancer ses actions d'inactivité.
 -- Une fenêtre non maximisée ne bloque donc pas la veille à cause de ces règles.
 local fullscreen_media = {
-    "^(.*celluloid.*|.*mpv.*|.*vlc.*)$", -- Lecteurs multimédias
-    "^.*[Ss]potify.*$",                 -- Spotify
-    "^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|.*vivaldi.*)$",
-    -- Navigateurs (vidéo en plein écran)
+	"^(.*celluloid.*|.*mpv.*|.*vlc.*)$", -- Lecteurs multimédias
+	"^.*[Ss]potify.*$", -- Spotify
+	"^(.*LibreWolf.*|.*floorp.*|.*brave-browser.*|.*firefox.*|.*chromium.*|.*zen.*|.*vivaldi.*)$",
+	-- Navigateurs (vidéo en plein écran)
 }
 
 for _, pattern in ipairs(fullscreen_media) do
-    hl.window_rule({
-        match = { class = pattern },
-        idle_inhibit = "fullscreen",
-    })
+	hl.window_rule({
+		match = { class = pattern },
+		idle_inhibit = "fullscreen",
+	})
 end
 
 -- 3. IMAGE DANS L'IMAGE (PICTURE-IN-PICTURE) -------------------------------
@@ -70,12 +70,12 @@ end
 -- Le titre doit commencer par « Picture-in-Picture » (ou une variante).
 -- Une seule règle suffit : inutile d'attribuer un tag intermédiaire.
 hl.window_rule({
-    match = { title = "^[Pp]icture.in.[Pp]icture.*$" },
-    float = true,
-    pin = true,
-    keep_aspect_ratio = true,
-    size = "25% 25%",
-    move = "73% 72%",
+	match = { title = "^[Pp]icture.in.[Pp]icture.*$" },
+	float = true,
+	pin = true,
+	keep_aspect_ratio = true,
+	size = "25% 25%",
+	move = "73% 72%",
 })
 
 -- 4. OPACITÉ ---------------------------------------------------------------
@@ -96,15 +96,22 @@ hl.window_rule({
 -- Empêche certaines fenêtres techniques intitulées « win123 » de voler
 -- le focus au moment de leur apparition.
 hl.window_rule({
-    match = {
-        class = "^.*jetbrains.*$",
-        title = "^win[0-9]+$",
-    },
-    no_initial_focus = true,
+	match = {
+		class = "^.*jetbrains.*$",
+		title = "^win[0-9]+$",
+	},
+	no_initial_focus = true,
 })
 
 -- Lecteur cassette Quickshell : fenêtre flottante dédiée.
 hl.window_rule({
-    match = { title = "^Cassette Deck$" },
-    float = true,
+	match = { title = "^Cassette Deck$" },
+	float = true,
+})
+
+-- Ignore self-maximize requests from apps (from the upstream example config)
+hl.window_rule({
+	name = "suppress-maximize-events",
+	match = { class = ".*" },
+	suppress_event = "maximize",
 })
