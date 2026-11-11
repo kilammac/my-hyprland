@@ -9,6 +9,7 @@ Item {
     property alias player: player
     property alias volume: output.volume
     property string error: ""
+    property real resumePosition: -1
     property bool pendingPlay: false
     property bool scanning: false
     readonly property bool playing: player.playbackState === MediaPlayer.PlayingState
@@ -19,14 +20,23 @@ Item {
         return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
     function load(urls) {
-        player.stop(); pendingPlay = false;
+        player.stop(); pendingPlay = false; resumePosition = -1;
         tracks = Array.from(urls, u => String(u));
         index = tracks.length ? 0 : -1; error = "";
         player.source = index >= 0 ? tracks[index] : "";
     }
+    function restore(urls, i, ms) {
+        load(urls); if (tracks.length) choose(Math.max(0, Math.min(i, tracks.length - 1)), false);
+        resumePosition = Math.max(0, Number(ms) || 0); applyResume();
+    }
+    function applyResume() {
+        if (resumePosition >= 0 && player.seekable && (player.mediaStatus === MediaPlayer.LoadedMedia || player.mediaStatus === MediaPlayer.BufferedMedia)) {
+            player.position = resumePosition; resumePosition = -1;
+        }
+    }
     function choose(i, autoplay) {
         if (i < 0 || i >= tracks.length) return;
-        player.stop(); index = i; error = "";
+        player.stop(); resumePosition = -1; index = i; error = "";
         pendingPlay = autoplay; player.source = tracks[index];
         if (autoplay && (player.mediaStatus === MediaPlayer.LoadedMedia || player.mediaStatus === MediaPlayer.BufferedMedia)) { pendingPlay = false; player.play(); }
     }
@@ -39,7 +49,9 @@ Item {
     MediaPlayer {
         id: player
         audioOutput: output
+        onSeekableChanged: root.applyResume()
         onMediaStatusChanged: {
+            root.applyResume();
             if (mediaStatus === MediaPlayer.LoadedMedia && root.pendingPlay) { root.pendingPlay = false; play(); }
             if (mediaStatus === MediaPlayer.EndOfMedia) root.next();
         }

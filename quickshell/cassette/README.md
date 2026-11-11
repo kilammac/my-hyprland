@@ -34,52 +34,101 @@ La règle `title = "^Cassette Deck$", float = true` a été ajoutée dans
 `~/.config/hypr/modules/windowrules.lua`. Si nécessaire, exécuter
 `hyprctl reload` puis `hyprctl configerrors` dans la session.
 
-## YouTube (audio)
+## YouTube : vidéos et playlists de chaînes
 
-Cliquez sur **YouTube…**, collez le lien d’une vidéo, puis **Écouter**.
-Les liens watch, youtu.be, Shorts et live sont acceptés. Les paramètres de
-playlist sont retirés : une vidéo à la fois, sans prise en charge des playlists.
-La lecture démarre automatiquement. Play, Pause, Stop, volume et déplacement
-pilotent mpv ; les titres et durées remontent par JSON IPC.
-La recherche dans le morceau est désactivée si le flux ne la permet pas.
-Précédent revient au début ; Suivant est désactivé en mode YouTube.
+Cliquez sur **YouTube…**, collez le lien d’une vidéo ou d’une playlist publiée
+par une chaîne, puis **Écouter**. Les liens `youtube.com/playlist?list=…` sont
+acceptés. Un lien de vidéo avec `&list=…` ouvre la playlist entière ; pour écouter
+seulement la vidéo, retirez le paramètre `list`.
 
-Commande depuis un terminal de la session :
+Le lecteur récupère les titres avec yt-dlp, affiche les pistes et les enchaîne
+avec mpv. Précédent/Suivant et un clic dans la liste changent de piste. Après
+trois secondes, Précédent revient d’abord au début du morceau. Les vidéos
+signalées privées/supprimées sont filtrées ; une piste qui échoue est sautée
+si une suivante existe, avec un message dans l’interface. À la fin, la lecture
+s’arrête. Une chaîne complète et ses différents onglets ne constituent pas une
+playlist : utilisez le lien d’une playlist de son onglet « Playlists ».
+
+### Mix YouTube et liens directs
+
+Les liens `watch?v=…&list=RD…&index=…` sont des Mix YouTube. Le lecteur conserve
+la vidéo de départ avec le Mix et commence sur cette vidéo lorsqu’elle est
+présente dans la liste extraite. Les paramètres de suivi et `index` sont retirés,
+mais le paramètre `v` est conservé. Les anciennes URL `playlist?list=RD…` sont
+converties vers une URL avec vidéo de départ lorsque l’identifiant le permet.
+
+Un Mix étant continuellement alimenté, son extraction est bornée à **50 pistes**
+par ouverture pour éviter d’attendre indéfiniment. À la fin de cette liste,
+rouvrez le lien pour obtenir un nouveau lot. Les playlists ordinaires ne sont
+pas soumises à cette limite.
+
+Collez directement le lien complet dans **YouTube…**, sans retirer `list`.
+L’IPC `open` reconnaît maintenant aussi ces liens, comme la méthode `youtube` :
 
 ```sh
-qs ipc -p ~/.config/quickshell/shell.qml call cassette youtube 'https://www.youtube.com/watch?v=IDENTIFIANT'
+qs ipc -p ~/.config/quickshell/shell.qml call cassette open 'https://www.youtube.com/watch?v=3Ts_DKtzry8&list=RDgngiaY3XE_c&index=2'
 ```
 
-L’identifiant doit être celui d’une vidéo réelle (11 caractères).
+Un lien sans paramètre `list` reste une vidéo seule, sans piste suivante.
+
+Les boutons de transport, volume et progression pilotent mpv. Le déplacement
+est désactivé si le flux ne le permet pas, notamment certains directs.
+Votre fonction Bash `mpva` reste inchangée ; Quickshell lance directement mpv
+avec votre sélection de formats `234/233/bestaudio/best`, sans scripts ni
+configuration mpv utilisateur. Les fichiers locaux restent lus par QtMultimedia.
+Ouvrir une nouvelle source arrête la précédente.
+
+Commande IPC (remplacer le lien par un vrai lien) :
+
+```sh
+qs ipc -p ~/.config/quickshell/shell.qml call cassette youtube 'https://www.youtube.com/playlist?list=IDENTIFIANT'
+```
+
 Pour une instance autonome, utilisez le chemin `~/.config/quickshell/cassette`
-avec `-p`. Votre fonction Bash `mpva` reste inchangée : Quickshell lance
-`mpv` directement, sans charger `.bashrc`, avec `--no-video` et votre sélection
-`234/233/bestaudio/best`. Le moteur utilise une instance mpv dédiée sans
-configuration ni scripts utilisateur, avec une socket privée sous
-`XDG_RUNTIME_DIR`. Il reste disponible au repos après Stop et s’arrête avec le
-composant Quickshell.
+avec `-p`. Aucun fichier audio permanent n’est téléchargé ; la liste et les
+métadonnées sont mémorisées. Aucun cookie de navigateur n’est lu automatiquement.
+Les contenus privés, soumis à connexion ou refusés par YouTube peuvent échouer.
+En cas de problème, essayer le lien dans un terminal avec `mpva 'URL'` et vérifier
+la version de yt-dlp.
 
-### Historique YouTube
+## Historique et favoris
 
-Le dialogue **YouTube…** affiche les **10 derniers liens ouverts**.
-Cliquez sur une entrée pour la réécouter. Le lien réécouté remonte en tête,
-sans doublon. Les titres reçus de mpv sont conservés ; avant leur réception,
-le lien sert de libellé. Un lien valide reste dans l’historique même si son
-chargement échoue, pour pouvoir réessayer.
+Dans **YouTube…**, choisissez **Historique** ou **Favoris ★**.
+L’historique garde les dix derniers liens de vidéos ou playlists ouverts,
+sans doublons ; une réécoute remet le lien en tête. Le titre est mis à jour
+dès qu’il est disponible. Un lien valide peut être conservé même si son accès échoue.
 
-La sauvegarde est indépendante de la playlist locale et persiste après
-fermeture/rechargement du lecteur. Elle se trouve dans
-`$XDG_STATE_HOME/quickshell-cassette.ini`, ou par défaut
-`~/.local/state/quickshell-cassette.ini` (section `YouTubeHistory`).
-Aucune donnée d’historique personnel n’est incluse dans le dossier partagé.
+Cliquez sur **☆** dans l’historique pour ajouter une entrée aux favoris.
+Dans la fenêtre principale, **☆ Vidéo** enregistre la piste courante et
+**☆ Playlist** enregistre toute la playlist. Une étoile pleine **★** permet de
+retirer le favori. Les favoris sont indépendants de l’historique et ne sont
+pas limités à dix. Cliquez sur un titre pour réécouter.
 
-Les fichiers locaux utilisent toujours QtMultimedia. Ouvrir une source arrête
-l’autre moteur. Aucun téléchargement de fichier permanent n’est effectué.
-Les flux privés, soumis à connexion ou refusés par YouTube peuvent échouer ;
-aucun cookie de navigateur n’est importé automatiquement.
-Si le streaming échoue, vérifier d’abord le même lien avec `mpva 'URL'`.
-Le test de lecture Internet n’a pas pu aboutir dans l’environnement restreint
-(DNS YouTube inaccessible, sockets Unix refusées).
+## État persistant
+
+Les réglages sont enregistrés dans `$XDG_STATE_HOME/quickshell-cassette.ini`,
+ou par défaut `~/.local/state/quickshell-cassette.ini` :
+
+- `YouTubeHistory` : les dix derniers liens et leurs titres ;
+- `YouTubeFavorites` : vidéos et playlists favorites ;
+- `PlayerState` : volume, dernière source, liste de pistes, morceau et position ;
+- `WindowState` : largeur et hauteur de fenêtre.
+
+Au démarrage, le lecteur restaure la dernière source **en pause**.
+Pour YouTube, le dernier contenu de playlist est restauré depuis la sauvegarde,
+sans réseau ; appuyer sur Play ouvre le morceau courant. Pour actualiser une
+playlist modifiée par sa chaîne, rouvrez son lien depuis les favoris/l’historique.
+La position est réappliquée lorsque le flux autorise le déplacement. Pour les
+fichiers locaux, les fichiers doivent toujours exister au même emplacement.
+
+L’état est sauvegardé après les commandes, régulièrement pendant la lecture
+(toutes les cinq secondes), et à la fermeture. Après une interruption brutale,
+quelques secondes de progression peuvent être perdues. Stop remet la position
+à zéro. La position de la fenêtre sur le bureau reste gérée par Hyprland.
+
+Les données personnelles restent hors du dossier à partager. Deux instances
+simultanées peuvent remplacer leurs derniers réglages respectifs : privilégiez
+une seule instance intégrée ou autonome.
 
 ## Lancement autonome
 
@@ -93,7 +142,10 @@ utilisent le même nom de raccourci global. L'IPC autonome utilise
 
 ## Modules
 
-- `DeckController.qml` : commandes communes et sélection exclusive de la source.
+- `DeckController.qml` : commandes communes, file de lecture et restauration.
+- `DeckState.qml` : état de lecture et taille de fenêtre.
+- `YoutubeUrls.js`, `YoutubePlaylist.qml` : validation des liens et extraction des playlists.
+- `YoutubeLibrary.qml` : dialogue YouTube, historique et favoris.
 - `YoutubeHistory.qml` : historique persistant de 10 liens, titres et déduplication.
 - `YoutubeEngine.qml` : mpv audio et connexion JSON IPC, avec yt-dlp pour YouTube.
 - `DeckEngine.qml` : MediaPlayer, AudioOutput, playlist, métadonnées,
@@ -107,7 +159,7 @@ Les dossiers sont parcourus au premier niveau, triés par nom ; pas de scan réc
 Ouvrir des fichiers/dossiers remplace la playlist et attend Play.
 La fin d'un morceau passe au suivant ; la fin de playlist arrête la lecture.
 Précédent revient au début après trois secondes, sinon au morceau précédent.
-La playlist et le volume ne sont pas persistés entre deux lancements.
+La liste locale, le morceau, le volume et la position sont restaurés en pause.
 Ce lecteur ne publie pas de service MPRIS : le service `Players.qml` du dashboard
 reste réservé aux lecteurs MPRIS existants.
 
@@ -136,7 +188,18 @@ les métadonnées et le changement d’état entre deux vidéos.
 `TestHistory.qml` vérifie la limite, l’ordre, les doublons, les titres et
 la restauration dans un second processus ; les tests utilisent un dossier
 d’état temporaire et ne touchent pas l’historique personnel.
-`TestVisual.qml` produit `/tmp/cassette-preview.png`.
+Le test Mix couvre le lien `watch` complet, la vidéo de départ, la limite
+d’extraction et les transitions. Un test avec **mpv réel**, une sortie audio
+nulle et des fichiers WAV locaux enregistre les événements de remplacement
+manuel et les fins de lecture ; ces événements sont ensuite rejoués dans le
+moteur QML pour vérifier qu’un ancien arrêt ne bloque pas une nouvelle piste.
+Ce test ne vérifie pas la connexion Unix de session ni le streaming YouTube.
+Les tests de playlist lancent un substitut yt-dlp et vérifient les titres,
+le filtrage, la navigation, l’enchaînement et les favoris. Des lancements séparés
+vérifient la sauvegarde/restauration du volume, de la liste, des positions locales
+et YouTube, ainsi que de la taille de fenêtre. Aucun test ne modifie votre état.
+`TestVisual.qml` produit `/tmp/cassette-preview.png` ; `TestLibrary.qml` produit
+`/tmp/cassette-library-preview.png`.
 
 Le lint Qt 6 désactive uniquement les catégories import et unresolved-type,
 car les métadonnées installées de Quickshell ne résolvent pas PostReloadHook /

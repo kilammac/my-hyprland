@@ -9,10 +9,22 @@ import Quickshell.Hyprland
 
 FloatingWindow {
     id: window
-    onClosed: window.visible = false
+    onClosed: { saveWindowSize(); window.visible = false; }
+    property bool geometryReady: false
+    function saveWindowSize() {
+        if (geometryReady && width > 0 && height > 0) windowState.write({width: width, height: height});
+    }
+    readonly property var initialWindowSize: windowState.read()
+    Component.onCompleted: geometryReady = true
+    Component.onDestruction: saveWindowSize()
+    onWidthChanged: if (geometryReady) geometryCheckpoint.restart()
+    onHeightChanged: if (geometryReady) geometryCheckpoint.restart()
+    DeckState { id: windowState; category: "WindowState" }
+    Timer { id: geometryCheckpoint; interval: 500; onTriggered: window.saveWindowSize() }
     property alias face: face
     title: "Cassette Deck"
-    implicitWidth: 680; implicitHeight: 950
+    implicitWidth: Number.isFinite(initialWindowSize.width) ? Math.max(640, Math.min(3000, initialWindowSize.width)) : 680
+    implicitHeight: Number.isFinite(initialWindowSize.height) ? Math.max(880, Math.min(3000, initialWindowSize.height)) : 950
     minimumSize: Qt.size(640, 880)
     color: "#121413"
     DeckController { id: deck }
@@ -24,63 +36,12 @@ FloatingWindow {
         onAccepted: deck.load(selectedFiles)
     }
     FolderDialog { id: folder; title: "Ouvrir un dossier musical"; onAccepted: deck.openFolder(selectedFolder) }
-    Popup {
+    YoutubeLibrary {
         id: youtubeDialog
+        controller: deck
         parent: window.contentItem
         anchors.centerIn: parent
-        width: Math.min(560, window.contentItem.width - 40)
-        padding: 20; modal: true; focus: true
-        background: Rectangle { color: "#20271f"; radius: 8; border.color: "#70816a" }
-        onOpened: { linkError.text = ""; linkInput.forceActiveFocus(); }
-        function submit() {
-            if (deck.openYoutube(linkInput.text)) close();
-            else linkError.text = "Collez un lien vers une vidéo YouTube individuelle.";
-        }
-        contentItem: ColumnLayout {
-            spacing: 12
-            Label { text: "Écouter YouTube"; color: "#d0c6ad"; font.pixelSize: 20 }
-            TextField {
-                id: linkInput
-                Layout.fillWidth: true
-                placeholderText: "https://www.youtube.com/watch?v=…"
-                color: "#d7dfcf"; placeholderTextColor: "#8b9582"
-                selectByMouse: true
-                background: Rectangle { color: "#121812"; radius: 4; border.color: linkInput.activeFocus ? "#8db197" : "#54604d" }
-                onAccepted: youtubeDialog.submit()
-            }
-            Label { text: "Audio uniquement · une vidéo à la fois"; color: "#a2ac97" }
-            Label {
-                text: "Historique · 10 derniers liens"
-                color: "#d0c6ad"; font.bold: true
-            }
-            Label { visible: deck.youtubeHistory.length === 0; text: "Vos liens apparaîtront ici."; color: "#a2ac97" }
-            ListView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(260, contentHeight)
-                clip: true; spacing: 4
-                model: deck.youtubeHistory
-                delegate: ItemDelegate {
-                    id: historyRow
-                    required property var modelData
-                    width: ListView.view.width; height: 50
-                    Accessible.name: "Réécouter " + modelData.title
-                    background: Rectangle { color: historyRow.hovered ? "#35422e" : "#192016"; radius: 4 }
-                    contentItem: Column {
-                        spacing: 2
-                        Label { width: parent.width; text: "▶  " + historyRow.modelData.title; elide: Text.ElideRight; color: "#d7dfcf" }
-                        Label { width: parent.width; text: historyRow.modelData.url; elide: Text.ElideRight; color: "#95a388"; font.pixelSize: 10 }
-                    }
-                    onClicked: { if (deck.openYoutube(modelData.url)) youtubeDialog.close(); }
-                }
-                ScrollBar.vertical: ScrollBar {}
-            }
-            Label { id: linkError; Layout.fillWidth: true; wrapMode: Text.Wrap; color: "#e49b86" }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                DeckButton { text: "Annuler"; onClicked: youtubeDialog.close() }
-                DeckButton { text: "Écouter"; onClicked: youtubeDialog.submit() }
-            }
-        }
+        width: Math.min(580, window.contentItem.width - 40)
     }
     GlobalShortcut {
         appid: "quickshell"
@@ -96,12 +57,12 @@ FloatingWindow {
         function stop(): void { deck.stop(); }
         function next(): void { deck.next(); }
         function previous(): void { deck.previous(); }
-        function open(url: string): void { deck.load([url]); }
+        function open(url: string): bool { return deck.open(url); }
         function youtube(url: string): bool { window.visible = true; return deck.openYoutube(url); }
         function status(): string { return JSON.stringify({ title: deck.title, index: deck.index, count: deck.tracks.length, position: deck.position, duration: deck.duration, playing: deck.playing, loading: deck.loading, source: deck.online ? "youtube" : "local", error: deck.error }); }
     }
     Shortcut { enabled: !youtubeDialog.opened; sequence: "Space"; onActivated: deck.playing ? deck.pause() : deck.play() }
-    Shortcut { sequence: "Ctrl+O"; onActivated: files.open() }
+    Shortcut { enabled: !youtubeDialog.opened; sequence: "Ctrl+O"; onActivated: files.open() }
     Shortcut { enabled: !youtubeDialog.opened; sequence: "Escape"; onActivated: window.visible = false }
     ColumnLayout {
         id: face
@@ -122,6 +83,7 @@ FloatingWindow {
                 Repeater {
                     model: 3
                     delegate: Item {
+                        id: peakIndicator
                         required property int index
                         implicitWidth: 34
                         implicitHeight: index === 1 ? 16 : 30
@@ -134,7 +96,7 @@ FloatingWindow {
                                 id: peakLamp
                                 anchors.centerIn: parent
                                 width: 19; height: 19; radius: 10
-                                readonly property bool peak: (parent.parent.index === 0 ? meters.left : meters.right) > 0.9
+                                readonly property bool peak: (peakIndicator.index === 0 ? meters.left : meters.right) > 0.9
                                 gradient: Gradient {
                                     GradientStop { position: 0; color: peakLamp.peak ? "#ffa463" : "#777b79" }
                                     GradientStop { position: 1; color: peakLamp.peak ? "#b62e17" : "#303637" }
@@ -189,7 +151,7 @@ FloatingWindow {
             DeckButton { text: "⏮"; enabled: deck.index >= 0; onClicked: deck.previous(); Accessible.name: "Précédent" }
             DeckButton { text: "▶ Play"; enabled: deck.index >= 0; onClicked: deck.play() }
             DeckButton { text: "Ⅱ Pause"; enabled: deck.playing || deck.loading; onClicked: deck.pause() }
-            DeckButton { text: "■ Stop"; enabled: deck.index >= 0; onClicked: deck.stop() }
+            DeckButton { text: "■ Stop"; enabled: deck.index >= 0 || deck.loading; onClicked: deck.stop() }
             DeckButton { text: "⏭"; enabled: deck.index >= 0 && deck.index + 1 < deck.tracks.length; onClicked: deck.next(); Accessible.name: "Suivant" }
         }
         RowLayout {
@@ -200,16 +162,34 @@ FloatingWindow {
             DeckSlider { Layout.fillWidth: true; from: 0; to: 1; value: deck.volume; onMoved: deck.volume = value; Accessible.name: "Volume" }
             Label { text: Math.round(deck.volume * 100) + "%"; color: "#b7b9aa" }
         }
+        RowLayout {
+            visible: deck.online
+            Layout.fillWidth: true
+            Label { Layout.fillWidth: true; text: deck.playlist ? deck.sourceTitle + " · " + (deck.index + 1) + "/" + deck.tracks.length : "YouTube"; color: "#a2ac97"; elide: Text.ElideRight }
+            DeckButton {
+                enabled: deck.currentUrl.length > 0
+                text: (deck.isFavorite(deck.currentUrl) ? "★" : "☆") + " Vidéo"
+                onClicked: deck.toggleFavorite(deck.currentUrl, deck.title)
+            }
+            DeckButton {
+                visible: deck.playlist
+                text: (deck.isFavorite(deck.sourceUrl) ? "★" : "☆") + " Playlist"
+                onClicked: deck.toggleFavorite(deck.sourceUrl, deck.sourceTitle)
+            }
+        }
         Label { visible: deck.error.length > 0; text: deck.error; color: "#e49b86"; Layout.fillWidth: true; wrapMode: Text.Wrap }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 55
             clip: true; model: deck.tracks; spacing: 2
             delegate: ItemDelegate {
+                id: trackRow
                 required property int index
                 required property string modelData
                 width: ListView.view.width; height: 32
                 text: (index === deck.index ? "▶  " : "    ") + deck.trackLabel(modelData)
                 highlighted: index === deck.index
+                background: Rectangle { radius: 3; color: trackRow.highlighted ? "#38463a" : "#192016" }
+                palette.buttonText: "#c6cdb9"
                 palette.text: "#c6cdb9"
                 palette.highlightedText: "#e5efdc"
                 palette.highlight: "#38463a"

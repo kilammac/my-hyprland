@@ -19,12 +19,18 @@ Item {
     property bool pendingLoad: false
     property bool pendingPause: false
     property int attempts: 0
+    property bool awaitingStart: false
+    property int activeEntryId: -1
+    property int loadSerial: 1000
     property string lastDiagnostic: ""
     readonly property bool playing: loaded && !paused && !buffering
     readonly property string socketPath: String(Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/cassette-" + Quickshell.processId + "-" + token + ".sock"
     readonly property string token: Math.random().toString(36).slice(2, 9)
     readonly property var observed: ["time-pos", "duration", "pause", "paused-for-cache", "seekable", "media-title", "metadata"]
     signal commandSent(var command)
+    property real resumePosition: -1
+    signal finished()
+    signal playbackFailed(string message)
     signal titleResolved(string url, string title)
 
     // Only individual public YouTube video URLs. Strip playlist/tracking parameters.
@@ -52,36 +58,44 @@ Item {
         loaded = false; paused = true; buffering = false;
         position = 0; duration = 0; seekable = false;
     }
-    function open(input) {
+    function open(input, autoplay, startAt) {
         const normalized = normalize(input);
         if (!normalized) { error = "Collez le lien d’une vidéo YouTube (watch, youtu.be, Shorts ou live)."; return false; }
-        url = normalized; error = ""; lastDiagnostic = "";
+        url = normalized; awaitingStart = true; loadSerial++; error = ""; lastDiagnostic = "";
         reset(); title = "Chargement YouTube…"; artist = "YouTube";
-        loading = true; pendingLoad = true; pendingPause = false; attempts = 0;
+        loading = true; pendingLoad = true; pendingPause = autoplay === false; resumePosition = Number.isFinite(startAt) ? Math.max(0, startAt) : -1; attempts = 0;
         if (!mpv.running) mpv.running = true;
         if (ipc.connected) loadPending();
         loadDeadline.restart();
         return true;
     }
+    function restore(urlValue, titleValue, ms) {
+        stop(); url = urlValue; title = titleValue || urlValue; artist = "YouTube";
+        resumePosition = Math.max(0, Number(ms) || 0); position = resumePosition;
+    }
+    function applyResume() {
+        if (loaded && seekable && resumePosition >= 0) { const ms = resumePosition; resumePosition = -1; seek(ms); }
+    }
+    onSeekableChanged: applyResume()
     function loadPending() {
         if (!pendingLoad) return;
         pendingLoad = false;
         send(["set_property", "volume", Math.round(volume * 100)]);
-        send(["loadfile", url, "replace"]);
+        send(["loadfile", url, "replace"], loadSerial);
         send(["set_property", "pause", pendingPause]);
     }
     function play() {
         if (!url) return;
         if (loaded) { send(["set_property", "pause", false]); return; }
         if (loading) { pendingPause = false; send(["set_property", "pause", false]); return; }
-        open(url);
+        open(url, true, resumePosition);
     }
     function pause() {
         pendingPause = true;
         if (ipc.connected) send(["set_property", "pause", true]);
     }
     function stop() {
-        pendingLoad = false; loading = false; loadDeadline.stop();
+        awaitingStart = true; pendingLoad = false; loading = false; resumePosition = -1; loadDeadline.stop();
         if (ipc.connected) send(["stop"]);
         reset();
     }
@@ -92,17 +106,34 @@ Item {
     function receive(line) {
         let message;
         try { message = JSON.parse(line); } catch (_) { return; }
+        if (message.request_id === loadSerial && message.error && message.error !== "success") {
+            fail("mpv refuse la piste : " + message.error); playbackFailed(error); return;
+        }
         if (message.request_id >= 100 && message.request_id < 100 + observed.length && message.error === "success") {
             receive(JSON.stringify({event: "property-change", name: observed[message.request_id - 100], data: message.data}));
             return;
         }
-        if (message.event === "file-loaded") {
+        if (message.event === "start-file") {
+            activeEntryId = Number.isInteger(message.playlist_entry_id) ? message.playlist_entry_id : -1;
+            awaitingStart = false;
+        } else if (message.event === "file-loaded") {
+            awaitingStart = false;
             loaded = true; loading = false; loadDeadline.stop();
             // A second video may keep the same pause/seekability values: no change event is guaranteed.
             observed.forEach((name, i) => send(["get_property", name], 100 + i));
+            applyResume();
         } else if (message.event === "end-file") {
+            // Replacing a file emits end-file(stop) for the old item AFTER open().
+            // It must not cancel the new load or advance the queue twice.
+            if (message.reason === "stop" || message.reason === "redirect" || awaitingStart) return;
+            if (Number.isInteger(message.playlist_entry_id) && activeEntryId >= 0 && message.playlist_entry_id !== activeEntryId) return;
+            awaitingStart = true;
             reset(); loading = false; loadDeadline.stop();
-            if (message.reason === "error") error = "YouTube : " + (message.file_error || lastDiagnostic || "échec de lecture ; vérifiez yt-dlp et votre connexion.");
+            if (message.reason === "eof") finished();
+            if (message.reason === "error") {
+                error = "YouTube : " + (message.file_error || lastDiagnostic || "échec de lecture ; vérifiez yt-dlp et votre connexion.");
+                playbackFailed(error);
+            }
         } else if (message.event === "property-change") {
             const data = message.data;
             switch (message.name) {

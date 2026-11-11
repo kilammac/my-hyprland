@@ -35,6 +35,13 @@ ShellRoot {
             event({event: "property-change", name: "paused-for-cache", data: true}); check(!youtube.playing, "buffering stops reels");
             event({event: "property-change", name: "paused-for-cache", data: false}); check(youtube.playing, "buffering recovery");
             youtube.receive("not json");
+            youtube.awaitingStart = true; youtube.loading = true;
+            event({event: "end-file", reason: "stop", playlist_entry_id: 1});
+            check(youtube.loading && youtube.awaitingStart, "old stop cannot cancel next track");
+            event({event: "start-file", playlist_entry_id: 2});
+            event({event: "file-loaded"});
+            event({event: "end-file", reason: "eof", playlist_entry_id: 1});
+            check(youtube.loaded, "obsolete EOF cannot skip current track");
             event({event: "end-file", reason: "error", file_error: "Network error"});
             check(!youtube.playing && youtube.error.includes("Network error"), "error feedback");
             youtube.reset();

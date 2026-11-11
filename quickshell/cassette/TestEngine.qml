@@ -7,6 +7,7 @@ ShellRoot {
     property int ticks: 0
     function check(ok, message) { if (!ok) { console.error("FAIL: " + message); Qt.exit(1); } }
     Timer {
+        id: testTimer
         interval: 100; running: true; repeat: true
         onTriggered: {
             ticks++;
@@ -42,7 +43,7 @@ ShellRoot {
                 engine.load(["file:///tmp/cassette-missing.wav"]); stage++;
             } else if (stage === 9 && engine.error.length) {
                 console.log("PASS: folder, unicode URL, metadata, duration, volume, play/pause/stop, seek, next/previous, playlist end, invalid file");
-                Qt.quit();
+                testTimer.stop(); Qt.quit();
             }
         }
     }
