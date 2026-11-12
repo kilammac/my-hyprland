@@ -3,3 +3,6 @@
 *.swo
 *~
 .DS_Store
+
+# Documentation locale Quickshell
+/quickshell/docs/
