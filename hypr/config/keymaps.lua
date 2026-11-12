@@ -53,7 +53,7 @@ hl.bind(mainMod .. " + CTRL + P", hl.dsp.exec_cmd("$HOME/.config/hypr/scripts/si
 hl.bind(mainMod .. " + V", hl.dsp.global("quickshell:clipboard"))
 
 -- Applications --------------------------------------------------------------
-hl.bind(mainMod .. " + F", launchApp("thunar"))
+hl.bind(mainMod .. " + F", launchApp("files"))
 hl.bind(mainMod .. " + Return", launchApp(terminal))
 hl.bind(mainMod .. " + B", launchApp(browser))
 hl.bind(mainMod .. " + CTRL + B", launchApp(browser_alt))
@@ -149,3 +149,17 @@ hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), locked)
 hl.bind("XF86Calculator", launchApp("qalculate-gtk"))
 hl.bind("XF86PowerOff", hl.dsp.global("quickshell:power"))
 hl.bind("switch:on:Lid Switch", hl.dsp.global("quickshell:lid"))
+
+-- Basculer entre les raccourcis de l'hôte et ceux de la VM.
+-- Ces deux raccourcis restent disponibles malgré l'inhibition du client SPICE.
+local vmEscape = { dont_inhibit = true, submap_universal = true }
+hl.bind("SUPER + SHIFT + P", function()
+	local target = hl.get_current_submap() == "passthru" and "reset" or "passthru"
+	hl.dispatch(hl.dsp.submap(target))
+end, vmEscape)
+hl.bind("SUPER + Escape", hl.dsp.submap("reset"), vmEscape)
+
+-- Transmettre les autres touches à la fenêtre active, sans action sur l'hôte.
+hl.define_submap("passthru", function()
+	hl.bind("catchall", hl.dsp.no_op(), { non_consuming = true })
+end)

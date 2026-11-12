@@ -45,6 +45,22 @@ for _, class in ipairs(floating_classes) do
 	})
 end
 
+-- Dialogues du portail GTK : taille initiale proportionnelle à l'écran.
+hl.window_rule({
+	name = "gtk-portal-dialogs",
+	match = { class = "^xdg-desktop-portal-gtk$" },
+	float = true,
+	size = { "monitor_w * 0.65", "monitor_h * 0.75" },
+	center = true,
+})
+
+-- Les submaps contrôlent le passage des touches à la VM, plutôt que SPICE.
+hl.window_rule({
+	name = "spice-host-shortcuts",
+	match = { class = "^(remote-viewer|virt-viewer)$" },
+	no_shortcuts_inhibit = true,
+})
+
 -- 2. EMPÊCHER LA MISE EN VEILLE PENDANT UNE VIDÉO ---------------------------
 -- En mode plein écran uniquement, les applications ci-dessous empêchent
 -- normalement hypridle de lancer ses actions d'inactivité.
