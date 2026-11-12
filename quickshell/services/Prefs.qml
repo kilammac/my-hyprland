@@ -20,6 +20,7 @@ Singleton {
     property var hiddenBar: []
     property var disabledBar: []
     property var barScreens: ({})
+    property var barZones: ({})
     property var notifTimeouts: [Appearance.notif.timeoutLow, Appearance.notif.timeoutNormal, Appearance.notif.timeoutCritical]
     property string font: ""
     property real textScale: 1
@@ -92,6 +93,32 @@ Singleton {
         return root.barEnabled(entry) && !root.barOf(screen).hidden.includes(entry);
     }
 
+    function defaultZone(entry: string): string {
+        if (Appearance.bar.entriesCentre.includes(entry))
+            return BarZone.centre;
+        return Appearance.bar.entriesRight.includes(entry) ? BarZone.right : BarZone.left;
+    }
+
+    function barZone(entry: string): string {
+        const saved = root.barZones[entry];
+        return BarZone.values.includes(saved) ? saved : root.defaultZone(entry);
+    }
+
+    function setBarZone(entry: string, zone: string): void {
+        if (!BarZone.values.includes(zone))
+            return;
+        const next = Object.assign({}, root.barZones);
+        if (zone === root.defaultZone(entry))
+            delete next[entry];
+        else
+            next[entry] = zone;
+        root.set("barZones", next);
+    }
+
+    function zoneEntries(screen: string, zone: string): var {
+        return root.barEntries(screen, Appearance.bar.entryOrder.filter(entry => root.barZone(entry) === zone));
+    }
+
     function barEntries(screen: string, entries: var): var {
         const hidden = root.barOf(screen).hidden;
         return entries.filter(entry => root.barEnabled(entry) && !hidden.includes(entry));
@@ -151,6 +178,7 @@ Singleton {
             root.disabledBar = state.disabledBar ?? root.disabledBar;
             root.prayersEnabled = typeof state.prayersEnabled === "boolean" ? state.prayersEnabled : !root.disabledBar.includes(BarEntry.prayers);
             root.barScreens = state.barScreens ?? root.barScreens;
+            root.barZones = state.barZones ?? root.barZones;
             root.notifTimeouts = state.notifTimeouts ?? root.notifTimeouts;
             root.font = state.font ?? root.font;
             root.textScale = state.textScale ?? root.textScale;
@@ -183,6 +211,7 @@ Singleton {
             disabledBar: root.disabledBar,
             prayersEnabled: root.prayersEnabled,
             barScreens: root.barScreens,
+            barZones: root.barZones,
             notifTimeouts: root.notifTimeouts,
             font: root.font,
             textScale: root.textScale,
