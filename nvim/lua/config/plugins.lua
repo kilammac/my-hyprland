@@ -2,6 +2,9 @@ vim.pack.add({
 	-- LSP configs
 	{ src = "https://github.com/neovim/nvim-lspconfig" },
 
+	-- Analyse syntaxique : coloration activée via les API natives
+	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
+
 	-- Completion
 	{ src = "https://github.com/hrsh7th/nvim-cmp" },
 	{ src = "https://github.com/hrsh7th/cmp-nvim-lsp" },

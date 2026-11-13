@@ -1,21 +1,26 @@
+local group = vim.api.nvim_create_augroup("UserEditing", { clear = true })
+
 vim.api.nvim_create_autocmd("TextYankPost", {
-  callback = function()
-    vim.highlight.on_yank()
-  end,
+	group = group,
+	callback = function()
+		vim.hl.on_yank()
+	end,
+	desc = "Mettre la copie en surbrillance",
 })
 
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "lua", "python", "javascript", "typescript", "php", "rust", "dart" },
-  callback = function()
-    vim.opt_local.tabstop = 2
-    vim.opt_local.shiftwidth = 2
-  end,
-})
+-- Les exceptions par langage vivent dans after/ftplugin ; EditorConfig
+-- (intégré à Neovim) peut ensuite appliquer les règles propres au projet.
 
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "markdown" },
-  callback = function()
-    vim.opt_local.wrap = true
-    vim.opt_local.spell = false
-  end,
+-- Le runtime ne distingue pas encore ces fichiers du YAML ordinaire.
+vim.filetype.add({
+	filename = {
+		["compose.yaml"] = "yaml.docker-compose",
+		["compose.yml"] = "yaml.docker-compose",
+		["docker-compose.yaml"] = "yaml.docker-compose",
+		["docker-compose.yml"] = "yaml.docker-compose",
+	},
+	pattern = {
+		[".*[/]docker%-compose%..*%.ya?ml"] = "yaml.docker-compose",
+		[".*[/]compose%..*%.ya?ml"] = "yaml.docker-compose",
+	},
 })

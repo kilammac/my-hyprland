@@ -25,7 +25,7 @@ vim.opt.hlsearch = true -- Met en surbrillance les résultats de recherche
 vim.opt.clipboard = "unnamedplus" -- Utilise le presse-papiers système (copier/coller global)
 vim.opt.mouse = "a" -- Active la souris dans tous les modes
 
-vim.opt.updatetime = 200 -- Temps avant déclenchement de certains événements (LSP, etc.)
+vim.opt.updatetime = 200 -- Délai notamment utilisé par CursorHold ; ne règle pas la latence générale du LSP
 vim.opt.timeoutlen = 700 -- Temps d'attente pour les raccourcis (leader)
 
 vim.opt.splitright = true -- Les splits verticaux s'ouvrent à droite
